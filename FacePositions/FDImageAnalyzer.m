@@ -8,7 +8,6 @@
 
 #import "FDImageAnalyzer.h"
 
-
 @implementation FDImageAnalyzedUnit
 
 + (instancetype)unitWithRange:(FDRange)range point:(NSInteger)point {
@@ -36,9 +35,23 @@ typedef NS_ENUM(NSInteger, FDImageAnalysisDirection) {
     FDImageAnalysisDirectionVertical
 };
 
+#define FD_CANCEL_GUARD { if (_cancelled) { \
+    if (_resultBlocks) { \
+        _resultBlocks(FDImageAnalysisResultCancelled, [NSValue valueWithCGRect:fd_defaultRect(_effectiveLength, image.size, _direction)]);\
+    } \
+    return; \
+    } \
+}
+
+@interface FDImageAnalyzer ()
+@property (nonatomic, copy) void (^resultBlocks)(FDImageAnalysisResult, NSValue *);
+@end
+
 @implementation FDImageAnalyzer {
-    __block BOOL _canceled;
-    FDImageAnalysisDirection _direction;
+    __block BOOL _cancelled;
+    __block FDImageAnalysisDirection _direction;
+    __block CGFloat _effectiveLength;
+    __block CGFloat _totalLength;
 }
 
 /// Return direction for analysis.
@@ -64,6 +77,7 @@ CGFloat fd_totalLength(CGSize imageSize, FDImageAnalysisDirection direction) {
     }
 }
 
+/// Return calculated result rect.
 CGRect fd_resultRect(FDRange resultRange, CGSize imageSize, FDImageAnalysisDirection direction) {
     if (direction == FDImageAnalysisDirectionHorizontal) {
         return CGRectMake(resultRange.location, 0.0f, resultRange.length, imageSize.height);
@@ -72,34 +86,47 @@ CGRect fd_resultRect(FDRange resultRange, CGSize imageSize, FDImageAnalysisDirec
     }
 }
 
+/// Return default rect.
+CGRect fd_defaultRect(CGFloat effectiveLength, CGSize imageSize, FDImageAnalysisDirection direction) {
+    if (direction == FDImageAnalysisDirectionHorizontal) {
+        return CGRectMake((imageSize.width-effectiveLength)/2.0f, 0.0f, effectiveLength, imageSize.height);
+    } else {
+        return CGRectMake(0.0f, (imageSize.height-effectiveLength)/2.0f, imageSize.width, effectiveLength);
+    }
+}
+
 - (void)findSuitableRectWithImage:(UIImage *)image
                       aspectRatio:(CGFloat)aspectRatio
                            result:(void (^)(FDImageAnalysisResult, NSValue *))result
                           options:(FDFaceDetectionOptions)options {
+    // Set handler blocks.
+    self.resultBlocks = result;
+    
+    // Get paramters.
+    _direction = fd_direction(image.size, aspectRatio);
+    _effectiveLength = fd_effectiveLength(image.size, aspectRatio, _direction);
+    _totalLength = fd_totalLength(image.size, _direction);
+    
     // Detect faces.
     [self detectFacesWithImage:image
                       Accuracy:(options & FDFaceDetectionOptionsAccuracyHigh) ? CIDetectorAccuracyHigh : CIDetectorAccuracyLow
                  resultHandler:^(NSArray <NSValue *> *frames) {
-        
-        // Return here if no face detected.
+                     
+        // Return default rect if no face detected.
         if (frames.count == 0) {
-            result(FDImageAnalysisResultNoFaceDetected, nil);
+            CGRect defaultRect = fd_defaultRect(_effectiveLength, image.size, _direction);
+            result(FDImageAnalysisResultNoFaceDetected, [NSValue valueWithCGRect:defaultRect]);
             return;
         }
-        
-        // Get paramters.
-        FDImageAnalysisDirection direction = fd_direction(image.size, aspectRatio);
-        CGFloat effectiveLength = fd_effectiveLength(image.size, aspectRatio, direction);
-        CGFloat totalLength = fd_totalLength(image.size, direction);
-        
+                
         // Create array of range unit.
-        NSArray *unitArray = [self analyzedUnitArrayWithValues:frames direction:direction options:options];
+        NSArray *unitArray = [self analyzedUnitArrayWithValues:frames direction:_direction options:options];
         // Calculate suitable range for the direction.
-        FDRange range = [self suitableRangeWithUnitArray:unitArray effectiveLength:effectiveLength totalLength:totalLength];
+        FDRange range = [self suitableRangeWithUnitArray:unitArray effectiveLength:_effectiveLength totalLength:_totalLength];
                              
         // Pass result for the handler blocks.
-        CGRect resultRect = fd_resultRect(range, image.size, direction);
-        result(FDImageAnalysisResultSuccess, [NSValue valueWithCGRect:resultRect]);
+        CGRect resultRect = fd_resultRect(range, image.size, _direction);
+        _resultBlocks(FDImageAnalysisResultSuccess, [NSValue valueWithCGRect:resultRect]);
     }];
 }
 
@@ -114,28 +141,34 @@ CGRect fd_resultRect(FDRange resultRange, CGSize imageSize, FDImageAnalysisDirec
                resultHandler:(void (^ _Nullable)(NSArray <NSValue *> * _Nullable frames))resultHandler {
     
     dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^{
-        
-        // Create detector.
-        CIImage *ciimage = [CIImage imageWithCGImage:image.CGImage];
-        CIDetector *detector = [CIDetector detectorOfType:CIDetectorTypeFace context:nil options:@{accuracy: CIDetectorAccuracy}];
-        NSDictionary *imageOptions = [NSDictionary dictionaryWithObject:@(image.imageOrientation) forKey:CIDetectorImageOrientation];
-        NSArray *features = [detector featuresInImage:ciimage options:imageOptions];
-        
-        CGSize size = image.size;
-        NSInteger count = features.count;
-        CGFloat scale = [[UIScreen mainScreen] scale];
-        NSMutableArray *frames = [NSMutableArray arrayWithCapacity:count];
-        
-        // Convert bounds to frames represented in the coordinate of Cocoa.
-        for (CIFaceFeature *feature in features) {
-            CGRect bounds = feature.bounds;
-            CGRect frame = ({
-                CGFloat y = size.height*scale - CGRectGetMaxY(bounds);
-                CGRectMake(bounds.origin.x/scale, y/scale, bounds.size.width/scale, bounds.size.height/scale);
-            });
-            frames[[features indexOfObject:feature]] = [NSValue valueWithCGRect:frame];
+        // Release memory when called repeatedly.
+        @autoreleasepool {
+            // Create detector.
+            FD_CANCEL_GUARD;
+            CIImage *ciimage = [CIImage imageWithCGImage:image.CGImage];
+            FD_CANCEL_GUARD;
+            CIDetector *detector = [CIDetector detectorOfType:CIDetectorTypeFace context:nil options:@{accuracy: CIDetectorAccuracy}];
+            FD_CANCEL_GUARD;
+            NSDictionary *imageOptions = [NSDictionary dictionaryWithObject:@(image.imageOrientation) forKey:CIDetectorImageOrientation];
+            NSArray *features = [detector featuresInImage:ciimage options:imageOptions];
+            
+            CGSize size = image.size;
+            NSInteger count = features.count;
+            CGFloat scale = [[UIScreen mainScreen] scale];
+            NSMutableArray *frames = [NSMutableArray arrayWithCapacity:count];
+            
+            // Convert bounds to frames represented in the coordinate of Cocoa.
+            for (CIFaceFeature *feature in features) {
+                CGRect bounds = feature.bounds;
+                CGRect frame = ({
+                    CGFloat y = size.height*scale - CGRectGetMaxY(bounds);
+                    CGRectMake(bounds.origin.x/scale, y/scale, bounds.size.width/scale, bounds.size.height/scale);
+                });
+                frames[[features indexOfObject:feature]] = [NSValue valueWithCGRect:frame];
+            }
+            FD_CANCEL_GUARD;
+            if (resultHandler) resultHandler(frames);
         }
-        if (resultHandler) resultHandler(frames);
     });
 }
 
@@ -232,6 +265,14 @@ CGRect fd_resultRect(FDRange resultRange, CGSize imageSize, FDImageAnalysisDirec
         FDRangeMake(min, (max - min));
     });
     return range;
+}
+
+- (void)cancel {
+    _cancelled = YES;
+}
+
+- (void)dealloc {
+    _resultBlocks = nil;
 }
 
 @end

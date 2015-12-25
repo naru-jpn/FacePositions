@@ -41,13 +41,28 @@
 }
 
 - (void)setImage:(UIImage *)image cacheKey:(NSString *)cacheKey animated:(BOOL)animated {
+    
+    // Reset if image is nil.
+    if (nil == image) {
+        _image = nil;
+        _detectedRectValue = nil;
+        [self setNeedsDisplay];
+    }
+    
+    // Get key for caching.
+    CGFloat aspectRatio = CGRectGetWidth(self.frame)/CGRectGetHeight(self.frame);
+    NSString *key = cacheKey ? ({
+        NSString *ratio = [NSString stringWithFormat:@"%5.2f", aspectRatio];
+        [NSString stringWithFormat:@"%@_%@", cacheKey, ratio];
+    }) : nil;
+    
     _image = image;
-    _cacheKey = cacheKey;
+    _cacheKey = key;
     _detectedRectValue = nil;
     if (_image) {
         // Search cached value.
         if (_cacheKey) {
-            NSValue *cachedValue = [[FDImageAnalysisCache sharedCache] objectForKey:cacheKey];
+            NSValue *cachedValue = [[FDImageAnalysisCache sharedCache] objectForKey:_cacheKey];
             if (cachedValue) {
                 _detectedRectValue = cachedValue;
                 [self setNeedsDisplay];
@@ -57,23 +72,25 @@
         // Find suitable rect.
         CGFloat aspectRatio = CGRectGetWidth(self.frame)/CGRectGetHeight(self.frame);
         [_analyzer findSuitableRectWithImage:_image aspectRatio:aspectRatio result:^(FDImageAnalysisResult result, NSValue *value) {
-            if (result == FDImageAnalysisResultSuccess) {
-                dispatch_async(dispatch_get_main_queue(), ^{
-                    _detectedRectValue = value;
-                    [self setNeedsDisplay];
-                    // Execute fade-in animation if animated is true.
-                    if (animated) {
-                        [self setAlpha:0.0f];
-                        [UIView animateWithDuration:0.2f animations:^{
-                            [self setAlpha:1.0f];
-                        }];
-                    }
-                    // Save cache value if needed.
-                    if (_cacheKey) {
-                        [[FDImageAnalysisCache sharedCache] setObject:_detectedRectValue forKey:cacheKey];
-                    }
-                });
-            }
+            dispatch_async(dispatch_get_main_queue(), ^{
+                // Return here if detection cancelled.
+                if (result == FDImageAnalysisResultCancelled) {
+                    return;
+                }
+                _detectedRectValue = value;
+                [self setNeedsDisplay];
+                // Execute fade-in animation if animated is true.
+                if (animated) {
+                    [self setAlpha:0.0f];
+                    [UIView animateWithDuration:0.4f animations:^{
+                        [self setAlpha:1.0f];
+                    }];
+                }
+                // Save cache value if needed.
+                if (_cacheKey) {
+                    [[FDImageAnalysisCache sharedCache] setObject:_detectedRectValue forKey:_cacheKey];
+                }
+            });
         } options:FDFaceDetectionOptionsFaceOrderLarge];
     }
 }
@@ -81,6 +98,18 @@
 - (void)drawRect:(CGRect)rect {
     CGContextRef context = UIGraphicsGetCurrentContext();
     CGContextClearRect(context, rect);
+    if (nil != self.backgroundColor) {
+        NSInteger num = CGColorGetNumberOfComponents(self.backgroundColor.CGColor);
+        const CGFloat *comps = CGColorGetComponents(self.backgroundColor.CGColor);
+        if (num == 2) {
+            CGFloat color[4] = {comps[0], comps[0], comps[0], comps[1]};
+            CGContextSetFillColor(context, color);
+        } else {
+            CGFloat color[4] = {comps[0], comps[1], comps[2], comps[3]};
+            CGContextSetFillColor(context, color);
+        }
+        CGContextFillRect(context, self.bounds);
+    }
     CGContextSetAllowsAntialiasing(context, false);
     if (_image && _detectedRectValue) {
         CGRect detectedRect = _detectedRectValue.CGRectValue;
@@ -99,6 +128,11 @@
         }
     }
     return 0.0f;
+}
+
+- (void)cancelDetecting {
+    [_analyzer cancel];
+    _analyzer = [[FDImageAnalyzer alloc] init];
 }
 
 @end

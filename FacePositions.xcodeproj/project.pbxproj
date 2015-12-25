@@ -7,6 +7,7 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		43BC98111C2B7F5E00A003EF /* CollectionViewCell.m in Sources */ = {isa = PBXBuildFile; fileRef = 43BC98101C2B7F5E00A003EF /* CollectionViewCell.m */; };
 		43F3CBE81C250744004FE195 /* main.m in Sources */ = {isa = PBXBuildFile; fileRef = 43F3CBE71C250744004FE195 /* main.m */; };
 		43F3CBEB1C250744004FE195 /* AppDelegate.m in Sources */ = {isa = PBXBuildFile; fileRef = 43F3CBEA1C250744004FE195 /* AppDelegate.m */; };
 		43F3CBEE1C250744004FE195 /* ViewController.m in Sources */ = {isa = PBXBuildFile; fileRef = 43F3CBED1C250744004FE195 /* ViewController.m */; };
@@ -18,6 +19,8 @@
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
+		43BC980F1C2B7F5E00A003EF /* CollectionViewCell.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = CollectionViewCell.h; sourceTree = "<group>"; };
+		43BC98101C2B7F5E00A003EF /* CollectionViewCell.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = CollectionViewCell.m; sourceTree = "<group>"; };
 		43F3CBE31C250744004FE195 /* FacePositions.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = FacePositions.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		43F3CBE71C250744004FE195 /* main.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = main.m; sourceTree = "<group>"; };
 		43F3CBE91C250744004FE195 /* AppDelegate.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = AppDelegate.h; sourceTree = "<group>"; };
@@ -69,6 +72,8 @@
 				43F3CBEA1C250744004FE195 /* AppDelegate.m */,
 				43F3CBEC1C250744004FE195 /* ViewController.h */,
 				43F3CBED1C250744004FE195 /* ViewController.m */,
+				43BC980F1C2B7F5E00A003EF /* CollectionViewCell.h */,
+				43BC98101C2B7F5E00A003EF /* CollectionViewCell.m */,
 				43F3CC001C252FAB004FE195 /* FDImageView.h */,
 				43F3CC011C252FAB004FE195 /* FDImageView.m */,
 				43F3CC031C2548C8004FE195 /* FDImageAnalyzer.h */,
@@ -165,6 +170,7 @@
 				43F3CBEE1C250744004FE195 /* ViewController.m in Sources */,
 				43F3CC021C252FAB004FE195 /* FDImageView.m in Sources */,
 				43F3CBEB1C250744004FE195 /* AppDelegate.m in Sources */,
+				43BC98111C2B7F5E00A003EF /* CollectionViewCell.m in Sources */,
 				43F3CBE81C250744004FE195 /* main.m in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;

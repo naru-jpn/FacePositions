@@ -30,4 +30,9 @@
  */
 - (void)setImage:(UIImage * _Nullable)image cacheKey:(NSString * _Nullable)cacheKey animated:(BOOL)animated;
 
+/**
+ Cacnel face detection.
+ */
+- (void)cancelDetecting;
+
 @end

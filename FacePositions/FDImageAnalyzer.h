@@ -39,7 +39,9 @@ typedef NS_ENUM(NSInteger, FDImageAnalysisResult) {
     /** Success. */
     FDImageAnalysisResultSuccess,
     /** No faces detected. */
-    FDImageAnalysisResultNoFaceDetected
+    FDImageAnalysisResultNoFaceDetected,
+    /** Cancelled. */
+    FDImageAnalysisResultCancelled
 };
 
 @interface FDImageAnalyzedUnit : NSObject
@@ -65,5 +67,10 @@ typedef NS_ENUM(NSInteger, FDImageAnalysisResult) {
                       aspectRatio:(CGFloat)aspectRatio
                            result:(void (^ _Nonnull)(FDImageAnalysisResult result, NSValue * _Nullable value))result
                           options:(FDFaceDetectionOptions)options;
+
+/**
+ Cancel detection of faces.
+ */
+- (void)cancel;
 
 @end
