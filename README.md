@@ -15,7 +15,7 @@ FacePositions
 FDImageView *imageView = [[FDImageView alloc] initWithFrame:frame];
 
 UIImage *image = /* 画像 */;
-NSString *cacheKey = /* 計算結果をキャッシュする為の文字列 */;
+NSString *cacheKey = /* 計算結果をキャッシュする為の識別子 */;
 
 [imageView setImage:image cacheKey:cacheKey animated:YES];
 ```
@@ -27,7 +27,7 @@ NSString *cacheKey = /* 計算結果をキャッシュする為の文字列 */;
 
 ## 検出方法の設定
 
-画像の検出方法のの設定の為に、幾つかのオプションが用意されています。
+画像の検出方法の設定の為に、幾つかのオプションが用意されています。
 
 ```objective-c
 typedef NS_OPTIONS(NSInteger, FDFaceDetectionOptions) {
