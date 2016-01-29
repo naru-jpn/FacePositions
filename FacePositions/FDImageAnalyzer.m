@@ -8,6 +8,13 @@
 
 #import "FDImageAnalyzer.h"
 
+@interface FDImageAnalyzedUnit : NSObject
+@property (nonatomic) FDRange range;
+@property (nonatomic) NSInteger point;
+@property (nonatomic, weak) FDImageAnalyzedUnit * _Nullable endAnchor;
++ (instancetype _Nonnull)unitWithRange:(FDRange)range point:(NSInteger)point;
+@end
+
 @implementation FDImageAnalyzedUnit
 
 + (instancetype)unitWithRange:(FDRange)range point:(NSInteger)point {
@@ -35,6 +42,7 @@ typedef NS_ENUM(NSInteger, FDImageAnalysisDirection) {
     FDImageAnalysisDirectionVertical
 };
 
+// Macro to cancel procedure.
 #define FD_CANCEL_GUARD { if (_cancelled) { \
     if (_resultBlocks) { \
         _resultBlocks(FDImageAnalysisResultCancelled, [NSValue valueWithCGRect:fd_defaultRect(_effectiveLength, image.size, _direction)]);\
@@ -54,7 +62,7 @@ typedef NS_ENUM(NSInteger, FDImageAnalysisDirection) {
     __block CGFloat _totalLength;
 }
 
-/// Return direction for analysis.
+/// Return direction of analysis.
 FDImageAnalysisDirection fd_direction(CGSize imageSize, CGFloat aspectRatio) {
     return (imageSize.width/imageSize.height > aspectRatio) ? FDImageAnalysisDirectionHorizontal : FDImageAnalysisDirectionVertical;
 }
@@ -141,8 +149,10 @@ CGRect fd_defaultRect(CGFloat effectiveLength, CGSize imageSize, FDImageAnalysis
                resultHandler:(void (^ _Nullable)(NSArray <NSValue *> * _Nullable frames))resultHandler {
     
     dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^{
-        // Release memory when called repeatedly.
+        
+        // For releasing memory when called repeatedly.
         @autoreleasepool {
+            
             // Create detector.
             FD_CANCEL_GUARD;
             CIImage *ciimage = [CIImage imageWithCGImage:image.CGImage];
@@ -154,7 +164,7 @@ CGRect fd_defaultRect(CGFloat effectiveLength, CGSize imageSize, FDImageAnalysis
             
             CGSize size = image.size;
             NSInteger count = features.count;
-            CGFloat scale = [[UIScreen mainScreen] scale];
+            CGFloat scale = image.scale;
             NSMutableArray *frames = [NSMutableArray arrayWithCapacity:count];
             
             // Convert bounds to frames represented in the coordinate of Cocoa.
@@ -198,6 +208,7 @@ CGRect fd_defaultRect(CGFloat effectiveLength, CGSize imageSize, FDImageAnalysis
     } else {
         sortedArray = values;
     }
+    
     // Create unit array.
     NSMutableArray *unitArray = [NSMutableArray array];
     NSInteger count = sortedArray.count;
@@ -226,7 +237,7 @@ CGRect fd_defaultRect(CGFloat effectiveLength, CGSize imageSize, FDImageAnalysis
                       effectiveLength:(CGFloat)effectiveLength
                           totalLength:(CGFloat)totalLength {
     
-    // Find range containing some unit where total point for contained unit is the highest.
+    // Find range containing some unit where total point of contained unit is the highest.
     NSInteger highestPoint = 0;
     FDImageAnalyzedUnit *anchorUnit = nil;
     for (FDImageAnalyzedUnit *unit in unitArray) {

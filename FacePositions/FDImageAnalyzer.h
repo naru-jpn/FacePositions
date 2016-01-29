@@ -44,13 +44,6 @@ typedef NS_ENUM(NSInteger, FDImageAnalysisResult) {
     FDImageAnalysisResultCancelled
 };
 
-@interface FDImageAnalyzedUnit : NSObject
-@property (nonatomic) FDRange range;
-@property (nonatomic) NSInteger point;
-@property (nonatomic, weak) FDImageAnalyzedUnit * _Nullable endAnchor;
-+ (instancetype _Nonnull)unitWithRange:(FDRange)range point:(NSInteger)point;
-@end
-
 /**
  Analyze image contains faces.
  */
